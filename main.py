@@ -19,14 +19,14 @@ def create_tables():
 
 def add_client(cl_name, cl_lastname, cl_mail):
     command = f"""INSERT INTO clients(named, surname, email) 
-                VALUES('{cl_name}', '{cl_lastname}', '{cl_mail}')"""
-    cursor.execute(command)
+                VALUES(%s, %s, %s)"""
+    cursor.execute(command, (cl_name, cl_lastname, cl_mail))
 
 
 def add_phone(phone_number, id_client):
     phone_add = f"""INSERT INTO phones (phone, client_id) 
-                    VALUES({phone_number}, {id_client})"""
-    cursor.execute(phone_add)
+                    VALUES(%s, %s)"""
+    cursor.execute(phone_add, (phone_number, id_client))
 
 
 def get_params():
@@ -46,21 +46,35 @@ def get_params():
     return command[key], value
 
 
-def change_client(id_client, colum, value):
+def edit_client(id_client, **kwargs):
+
+    tuple_fields_values = tuple(zip(kwargs.keys(), kwargs.values()))
+    comprehension_fields_values = [f"{x[0]} = '{x[1]}'" for x in tuple_fields_values]
+    fields_values = ', '.join(comprehension_fields_values)
+
     change = f"""UPDATE clients 
-                 SET {colum} = '{value}'
-                 WHERE id = {id_client};"""
-    cursor.execute(change)
+                 SET 
+                        {fields_values}
+                 WHERE 
+                        id = %s;"""
+    cursor.execute(change, (id_client,))
 
 
-def search_client():
-    param = get_params()
-    change = f"""SELECT * FROM clients WHERE {param[0]} = '{param[1]}'"""
-    cursor.execute(change)
+def search_client(**kwargs):
+    tuple_fields_values = tuple(zip(kwargs.keys(), kwargs.values()))
+    comprehension_fields_values = [f"{x[0]} = '{x[1]}'" for x in tuple_fields_values]
+    fields_values = ' and '.join(comprehension_fields_values)
+    cursor.execute(f"""
+        SELECT named, surname, email, phone
+        FROM Clients c JOIN Phones p ON p.client_id = c.id
+        WHERE {fields_values}
+        """)
+
+    return f"[INFO]: found successful: {cursor.fetchall()}"
 
 
-def delete_phone(id_client, phone_number):
-    """Удаление номера телефона клиента"""
+def delete_phone(id_client, phone_number):  # +++
+    """УДАЛЕНИЕ НОМЕРА ТЕЛЕФОНА КЛИЕНТА"""
     del_number = """DELETE FROM Phones WHERE client_id=%s AND phone=%s"""
     cursor.execute(del_number, (id_client, phone_number))
 
@@ -68,10 +82,9 @@ def delete_phone(id_client, phone_number):
 def delete_client(id_client):
     """ УДАЛЕНИЕ ИНФОРМАЦИИ О КЛИЕНТЕ """
     del_phone = """DELETE FROM Phones WHERE client_id=%s"""
-    cursor.execute(del_phone, [id_client])
-
+    cursor.execute(del_phone, (id_client,))
     del_client = """DELETE FROM Clients WHERE id=%s"""
-    cursor.execute(del_client, [id_client])
+    cursor.execute(del_client, (id_client,))
 
 
 if __name__ == '__main__':
@@ -88,12 +101,12 @@ if __name__ == '__main__':
         '''Выполнение SQL-запроса для заполнения таблицы'''
 
         # create_tables()
-        # add_client('Edvard', 'Norton', 'edv_norton@gugle.com')
-        # add_phone(89634565263, 1)
-        # search_client()
-        # change_client(1, "named", "Edvard")
+        # add_client('Dave', 'Batista', 'dave_batista@gooogle.com')
+        # add_phone(89634565263, 3)
+        print(search_client(named='Edvard'))
+        # edit_client(3, named='Edvard', email="Edv_Norton@gmail.com")
         # delete_phone(1, 89634565263)
-        delete_client(1)
+        # delete_client(1)
         # ============================
         print("SQL-запрос успешно выполнен")
         connection.commit()
